@@ -125,6 +125,7 @@ INT_EXPR_MORE:
 M_EXPR_MORE:
         "*"   PUSH_T_EXPR BIT_EXPR_MORE emit TOK_MUL M_EXPR_MORE
         "/"   PUSH_T_EXPR BIT_EXPR_MORE emit TOK_DIV M_EXPR_MORE
+        "%"   PUSH_T_EXPR BIT_EXPR_MORE emit TOK_MOD M_EXPR_MORE
         "Mod" PUSH_T_EXPR BIT_EXPR_MORE emit TOK_MOD M_EXPR_MORE
         pass
 
@@ -214,6 +215,7 @@ FORCE_BOOL_EXPR:
         NOT_EXPR AND_EXPR_MORE OR_EXPR_MORE
 
 OR_EXPR_RIGHT: 'OR'
+        "||" emit TOK_PUSH NOT_EXPR AND_EXPR_MORE emit TOK_L_OR OR_EXPR_MORE
         "Or" emit TOK_PUSH NOT_EXPR AND_EXPR_MORE emit TOK_L_OR OR_EXPR_MORE
 
 OR_EXPR_MORE:
@@ -221,6 +223,7 @@ OR_EXPR_MORE:
         pass
 
 AND_EXPR_RIGHT: 'AND'
+        "&&" emit TOK_PUSH NOT_EXPR emit TOK_L_AND AND_EXPR_MORE
         "And" emit TOK_PUSH NOT_EXPR emit TOK_L_AND AND_EXPR_MORE
 
 AND_EXPR_MORE:
@@ -228,6 +231,7 @@ AND_EXPR_MORE:
         pass
 
 NOT_EXPR:
+        "!" NOT_EXPR emit TOK_L_NOT
         "Not" NOT_EXPR emit TOK_L_NOT
         INT_EXPR COMP_OR_BOOL
         STR_EXPR COMP_STR_RIGHT
@@ -239,9 +243,11 @@ COMP_OR_BOOL:
 COMP_EXPR_RIGHT: integer comparison operator
         "<=" INT_EXPR emit { TOK_GT, TOK_L_NOT }
         ">=" INT_EXPR emit { TOK_LT, TOK_L_NOT }
+        "!=" INT_EXPR emit TOK_NEQ
         "<>" INT_EXPR emit TOK_NEQ
         "<"  INT_EXPR emit TOK_LT
         ">"  INT_EXPR emit TOK_GT
+        "==" INT_EXPR emit TOK_EQ
         "="  INT_EXPR emit TOK_EQ
 
 # Push and string expression
@@ -249,9 +255,11 @@ PCMP_STR_EXPR:
         emit TOK_PUSH STR_EXPR emit TOK_CMP_STR
 
 COMP_STR_RIGHT: comparison operator
+        "==" PCMP_STR_EXPR emit TOK_EQ
         "="  PCMP_STR_EXPR emit TOK_EQ
         ">"  PCMP_STR_EXPR emit TOK_GT
         ">=" PCMP_STR_EXPR emit { TOK_LT, TOK_L_NOT }
+        "!=" PCMP_STR_EXPR emit TOK_NEQ
         "<>" PCMP_STR_EXPR emit TOK_NEQ
         "<=" PCMP_STR_EXPR emit { TOK_GT, TOK_L_NOT }
         "<"  PCMP_STR_EXPR emit TOK_LT
@@ -510,6 +518,7 @@ STATEMENT: statement
         "Until" FORCE_BOOL_EXPR emit TOK_CJUMP E_POP_REPEAT
         "While" emit LT_WHILE_1 E_PUSH_LT FORCE_BOOL_EXPR emit { TOK_CJUMP, LT_WHILE_2 } E_PUSH_LT
         "WEnd" E_EOL emit TOK_JUMP E_POP_WHILE
+        "ENDWhile" E_EOL emit TOK_JUMP E_POP_WHILE
         "If" FORCE_BOOL_EXPR emit { TOK_CJUMP, LT_IF } E_PUSH_LT THEN_OR_MULTILINE
         "For" VAR_WORD_LVALUE_SADDR EQUAL emit TOK_PUSH EXPR emit TOK_DPOKE \
               "To" EXPR STEP_OPTIONAL \
@@ -523,11 +532,14 @@ STATEMENT: statement
         "DIm" DIM_VAR DIM_MORE
         "PAuse" PAUSE_OPT emit TOK_PAUSE
         "INC" VAR_WORD_LVALUE_SADDR emit TOK_INC
+        "++" VAR_WORD_LVALUE_SADDR emit TOK_INC
         "DEc" VAR_WORD_LVALUE_SADDR emit TOK_DEC
+        "--" VAR_WORD_LVALUE_SADDR emit TOK_DEC
         "PRoc" E_LABEL_CREATE emit { TOK_JUMP } E_LABEL_DEF emit LT_PROC_2 E_PUSH_LT OPT_PROC_VAR
         "ENDProc" E_POP_PROC_2 emit TOK_RET E_POP_PROC_DATA
         EXEC_CALL E_LABEL_CREATE OPT_EXEC_PARAM emit { TOK_CALL } E_DO_EXEC
         "DAta" DATA_VAR DATA_END
+	"SYSTEM" emit TOK_END
         "END" emit TOK_END
         "Timer" emit { TOK_0, TOK_BYTE_POKE, RTCLOK1, TOK_0, TOK_BYTE_POKE, RTCLOK2 }
         "CLR" emit { TOK_NUM, &CLEAR_DATA, TOK_USR_ADDR, TOK_USR_CALL }
